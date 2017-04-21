@@ -46,10 +46,21 @@ public class NavMeshHelper : EditorWindow
         EditorWindow.GetWindow<NavMeshHelper>();
     }
 
+    private void Awake()
+    {
+        layerMask.value = 1;
+    }
+
     private void OnGUI()
     {
         EditorGUILayout.LabelField("NavMesh Helper Attributes", EditorStyles.boldLabel);
+        var oldValue = layerMask.value;
         layerMask = CustomEditorExtension.LayerMaskField("Layer Mask: ", layerMask);
+        if (layerMask.value != oldValue)
+        {
+            BackToNormalMode();
+        }
+
         GUILayout.Box("", new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.Height(1.0f) });
         EditorGUILayout.LabelField("Action", EditorStyles.boldLabel);
 
@@ -67,7 +78,6 @@ public class NavMeshHelper : EditorWindow
             // BAKE MODE GUI
             if (GUILayout.Button("Back to Normal Mode"))
             {
-                bakeMode = false;
                 BackToNormalMode();
             }
         }
@@ -112,7 +122,6 @@ public class NavMeshHelper : EditorWindow
 
                     // setup flags
                     StaticEditorFlags flags = GameObjectUtility.GetStaticEditorFlags(colliders[i].gameObject);
-                    flags |= StaticEditorFlags.NavigationStatic;
                     GameObjectUtility.SetStaticEditorFlags(fakeObject, flags);
 
                     // setup nav mesh area
@@ -142,8 +151,9 @@ public class NavMeshHelper : EditorWindow
     /// </summary>
     private void BackToNormalMode()
     {
+        bakeMode = false;
         // enable objects
-        while (disableds.Count > 0)
+        while (disableds != null && disableds.Count > 0)
         {
             disableds.Pop().enabled = true;
         }
@@ -296,5 +306,10 @@ public class NavMeshHelper : EditorWindow
         GameObject tempPrimitive = GameObject.CreatePrimitive(PrimitiveType.Cube);
         diffuseDefaultMaterial = tempPrimitive.GetComponent<MeshRenderer>().sharedMaterial;
         DestroyImmediate(tempPrimitive);
+    }
+
+    private void OnDestroy()
+    {
+        BackToNormalMode();
     }
 }
