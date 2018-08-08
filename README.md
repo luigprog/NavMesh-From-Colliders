@@ -4,5 +4,3 @@ The Unity's NavMesh System is used to move objects in the game environment using
 But analyzing the Unity's Navmesh bake process, it actually generates the navmesh based on **renderers, not in colliders**.
 
 This too will help **preparing your scene for the NavMesh baking process**. As we know, the Unity's bake process is based on renderers, with that information, the tool **creates temporary objects** with mesh renderers generated **from the original object's collider**.
-
-[Download Play Demo](https://github.com/garcialuigi/ArcadeVehiclesPhysics/releases)
