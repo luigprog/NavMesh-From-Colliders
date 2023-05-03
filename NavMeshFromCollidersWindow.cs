@@ -3,14 +3,14 @@ using UnityEditor;
 using UnityEngine;
 
 /// <summary>
-/// This class represents a tool that helps to prepare the scene to NavMesh baking.
+/// This class represents a tool that helps to prepare the scene for NavMesh baking.
 /// It will generate clone objects from colliders already in the scene.
 /// These clone objects will contain the renderer generated from the collider shape.
 /// Unity NavMesh baking works upon Renderers, so colliders are ignored.
 /// This tool fulfil the need of using only colliders for NavMesh baking.
 /// Read the instructions for more information.
 /// </summary>
-public class NavMeshHelper : EditorWindow
+public class NavMeshFromCollidersWindow : EditorWindow
 {
     /// <summary>
     /// Holds the renderers disabled when setting up the bake mode.
@@ -40,10 +40,10 @@ public class NavMeshHelper : EditorWindow
     /// </summary>
     private bool bakeMode = false;
 
-    [MenuItem("Luigi/Open NavMeshHelper Window")]
+    [MenuItem("Window/Open NavMeshFromCollidersWindow")]
     public static void ShowWindow()
     {
-        EditorWindow.GetWindow<NavMeshHelper>();
+        GetWindow<NavMeshFromCollidersWindow>();
     }
 
     private void Awake()
@@ -53,9 +53,8 @@ public class NavMeshHelper : EditorWindow
 
     private void OnGUI()
     {
-        EditorGUILayout.LabelField("NavMesh Helper Attributes", EditorStyles.boldLabel);
         var oldValue = layerMask.value;
-        layerMask = CustomEditorExtension.LayerMaskField("Layer Mask: ", layerMask);
+        layerMask = CustomEditorExtensions.LayerMaskField("Layer Mask: ", layerMask);
         if (layerMask.value != oldValue)
         {
             BackToNormalMode();
@@ -67,7 +66,7 @@ public class NavMeshHelper : EditorWindow
         if (!bakeMode)
         {
             // NORMAL MODE GUI
-            if (GUILayout.Button("Go to NavMesh Bake Mode"))
+            if (GUILayout.Button("Prepare for NavMesh Bake"))
             {
                 bakeMode = true;
                 SetupNavMeshBakeMode();
@@ -76,7 +75,7 @@ public class NavMeshHelper : EditorWindow
         else
         {
             // BAKE MODE GUI
-            if (GUILayout.Button("Back to Normal Mode"))
+            if (GUILayout.Button("Back to Normal"))
             {
                 BackToNormalMode();
             }
@@ -178,7 +177,6 @@ public class NavMeshHelper : EditorWindow
 
         if (theCollider.GetType() == typeof(BoxCollider))
         {
-            #region In case col is a box
             BoxCollider baseCollider = theCollider as BoxCollider;
             fakeObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
             DestroyImmediate(fakeObject.GetComponent<Collider>());
@@ -193,11 +191,9 @@ public class NavMeshHelper : EditorWindow
             tempScale.y *= baseCollider.size.y;
             tempScale.z *= baseCollider.size.z;
             fakeObject.transform.localScale = tempScale;
-            #endregion
         }
         else if (theCollider.GetType() == typeof(CapsuleCollider))
         {
-            #region In case col is a capsule
             CapsuleCollider baseCollider = theCollider as CapsuleCollider;
             fakeObject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             DestroyImmediate(fakeObject.GetComponent<Collider>());
@@ -225,11 +221,9 @@ public class NavMeshHelper : EditorWindow
             tempScale.z *= baseCollider.radius / DEFAULT_CAPSULE_RADIUS;
             tempScale.y *= baseCollider.height / DEFAULT_CAPSULE_HEIGHT;
             fakeObject.transform.localScale = tempScale;
-            #endregion
         }
         else if (theCollider.GetType() == typeof(SphereCollider))
         {
-            #region In case col is a sphere
             SphereCollider baseCollider = theCollider as SphereCollider;
             fakeObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             DestroyImmediate(fakeObject.GetComponent<Collider>());
@@ -264,19 +258,18 @@ public class NavMeshHelper : EditorWindow
             tempScale.y *= baseCollider.radius / DEFAULT_SPHERE_RADIUS;
             tempScale.z *= baseCollider.radius / DEFAULT_SPHERE_RADIUS;
             fakeObject.transform.localScale = tempScale;
-            #endregion
         }
         else if (theCollider.GetType() == typeof(MeshCollider))
         {
-            #region In case col is a mesh
             MeshCollider baseCollider = theCollider as MeshCollider;
             // to generate the MeshCollider object, the original MUST HAVE a MeshRenderer
             if (baseCollider.GetComponent<MeshRenderer>() != null)
             {
                 int materialsCount = baseCollider.GetComponent<MeshRenderer>().sharedMaterials.Length;
                 fakeObject = new GameObject(DEFAULT_FAKEOBJECT_NAME);
-                fakeObject.transform.position = theCollider.gameObject.transform.position;
-                fakeObject.transform.rotation = theCollider.gameObject.transform.rotation;
+                fakeObject.transform.SetPositionAndRotation(
+                    theCollider.gameObject.transform.position,
+                    theCollider.gameObject.transform.rotation);
                 fakeObject.AddComponent<MeshFilter>().sharedMesh = baseCollider.sharedMesh;
                 if (diffuseDefaultMaterial == null)
                 {
@@ -290,7 +283,6 @@ public class NavMeshHelper : EditorWindow
                 fakeObject.AddComponent<MeshRenderer>().materials = mats;
                 fakeObject.transform.localScale = theCollider.gameObject.transform.lossyScale;
             }
-            #endregion
         }
 
         return fakeObject;
@@ -311,5 +303,54 @@ public class NavMeshHelper : EditorWindow
     private void OnDestroy()
     {
         BackToNormalMode();
+    }
+}
+
+/// <summary>
+/// Class that holds Unity Editor custom methods and extension methods.
+/// This class are intended to write facilitators and functionallity that the built in tools dont provide.
+/// </summary>
+public static class CustomEditorExtensions
+{
+    /// <summary>
+    /// Creates a LayerMask field in an editor(EditorWindow, Editor).
+    /// Unity is missing it, so there is the need to implement this handmade.
+    /// Use example:
+    /// private LayerMask layerMask = 0; // this has global scope
+    /// 
+    /// layerMask = CustomEditorExtensions.LayerMaskField("Layer Mask: ", layerMask);
+    /// </summary>
+    public static LayerMask LayerMaskField(string label, LayerMask layerMask)
+    {
+        List<string> layers = new();
+        List<int> layerNumbers = new();
+        for (int i = 0; i < 32; i++)
+        {
+            string layerName = LayerMask.LayerToName(i);
+            if (layerName != "")
+            {
+                layers.Add(layerName);
+                layerNumbers.Add(i);
+            }
+        }
+        int maskWithoutEmpty = 0;
+        for (int i = 0; i < layerNumbers.Count; i++)
+        {
+            if (((1 << layerNumbers[i]) & layerMask.value) > 0)
+            {
+                maskWithoutEmpty |= (1 << i);
+            }
+        }
+        maskWithoutEmpty = EditorGUILayout.MaskField(label, maskWithoutEmpty, layers.ToArray());
+        int mask = 0;
+        for (int i = 0; i < layerNumbers.Count; i++)
+        {
+            if ((maskWithoutEmpty & (1 << i)) > 0)
+            {
+                mask |= (1 << layerNumbers[i]);
+            }
+        }
+        layerMask.value = mask;
+        return layerMask;
     }
 }
