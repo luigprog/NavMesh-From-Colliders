@@ -1,6 +1,4 @@
 # NavMesh From Colliders
-The Unity's NavMesh System is used to move objects in the game environment using pathfinding. This object is an agent, and it needs information to recognize the world it is supposed to walk on. This information is achieved by baking your scene, generating a "blue" geometric mesh representing the walkable area of your environment.
-
 Mesh renderers are often detailed with specific artifacts.
 Since NavMesh baking is done based on the mesh renderers, it can generate a jerky and unprecise NavMesh.
 
